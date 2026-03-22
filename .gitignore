@@ -1,0 +1,114 @@
+# ─── Secrets & Credentials ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example       # keep the template, never the real secrets
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# ─── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+lib/
+lib64/
+.installed.cfg
+MANIFEST
+.Python
+
+# ─── Virtual Environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env.bak
+
+# ─── Testing & Coverage ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.coveragerc
+.tox/
+nosetests.xml
+test-results/
+
+# ─── Data & ML Model Caches ───────────────────────────────────────────────────
+# ChromaDB persistent store
+chroma_db/
+
+# HuggingFace / sentence-transformers model cache
+# (BLIP, all-MiniLM-L6-v2 etc. are large and should not be committed)
+.cache/
+~/.cache/huggingface/
+huggingface_cache/
+models/
+*.bin
+*.safetensors
+*.gguf
+*.onnx
+*.pt
+*.pth
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ─── OS & Editor Junk ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# ─── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+# Keep docker-compose.yml and Dockerfiles, but ignore any local override files
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# ─── Redis ────────────────────────────────────────────────────────────────────
+dump.rdb
+appendonly.aof
+
+# ─── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── Misc Build Artifacts ─────────────────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock
+node_modules/
+.npm

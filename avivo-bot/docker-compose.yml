@@ -1,0 +1,175 @@
+version: "3.9"
+
+networks:
+  avivo-net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  ollama_models:
+  chroma_db:
+
+services:
+
+  # ─── Infrastructure ─────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:7-alpine
+    container_name: aviva-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - avivo-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama
+    container_name: aviva-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - avivo-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ─── Ollama Model Init (one-shot) ────────────────────────────────────────────
+
+  ollama-init:
+    image: ollama/ollama
+    container_name: aviva-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=ollama
+    entrypoint: >
+      sh -c "
+        ollama pull phi3:mini &&
+        ollama pull llava
+      "
+    networks:
+      - avivo-net
+    restart: "no"
+
+  # ─── Application Services ───────────────────────────────────────────────────
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: aviva-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - avivo-net
+
+  rag-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    container_name: aviva-rag-worker
+    restart: unless-stopped
+    command: python -m workers.rag_worker
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_URL=http://ollama:11434
+      - CHROMA_DB_PATH=/app/chroma_db
+    volumes:
+      - chroma_db:/app/chroma_db
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - avivo-net
+
+  vision-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    container_name: aviva-vision-worker
+    restart: unless-stopped
+    command: python -m workers.vision_worker
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - avivo-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    container_name: aviva-api
+    restart: unless-stopped
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_URL=http://ollama:11434
+      - CHROMA_DB_PATH=/app/chroma_db
+    volumes:
+      - chroma_db:/app/chroma_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - avivo-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: aviva-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - FASTAPI_URL=http://api:8000
+    ports:
+      - "7860:7860"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - avivo-net
